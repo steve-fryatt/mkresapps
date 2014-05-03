@@ -1,0 +1,342 @@
+<document title="MkResApps">
+<define name="version" value="1.10">
+<define name="date" value="6 December 2002" length=30 align="right">
+
+
+
+
+
+<literal mode="Text">
+=============================================================================
+MkResApps - ResourceFS Utility                                   Version $$version$$
+
+(c) Stephen Fryatt, 1997                       $$date$$
+=============================================================================
+</literal>
+
+
+
+
+
+<chapter title="License" file="License">
+
+<cite>MkResApps</cite> is <strong>Freeware</strong>.  Copyright is held by the author, Stephen Fryatt, 1997.
+
+<cite>MkResApps</cite> may be copied freely, so long as it remains unaltered with all its files and documentation intact.
+
+If you wish to distribute <cite>MkResApps</cite>, please contact me to get my permission. This is so that I can ensure that you have the latest version available.  <cite>MkResApps</cite> may not be sold, although Public Domain libraries may charge for the cost of discs.
+
+No guarantee is made as to the suitability or stability of <cite>MkResApps</cite> for any particular purpose.  No liability can be accepted by the author for any loss or damage caused by the use of <cite>MkResApps</cite>.
+
+</chapter>
+
+
+
+
+
+<chapter title="Introduction" file="Introduction">
+
+<cite>MkResApps</cite> is a small BASIC utility that creates a Relocatable Module to add links to files, directories and applications to the ResourceFS.  The utility works from the command line, producing the required module from a source text file.
+
+It is more flexible than the RISC OS 3.5+ <cite>AddApp</cite> utility in that it can handle nested directories; it also pre-assembles the module so that the time to execute your !Boot sequence is minimised.  <cite>MkResApps</cite> can also handle links to directories and files on your hard disc.
+
+</chapter>
+
+
+
+
+
+
+<chapter title="Installing MkResApps" file="Install">
+
+<cite>MkResApps</cite> requires RISC OS 3.1 or later.  The module that it produces is 26/32-bit neutral and should work on RISC OS 5.  The utility can be run off a hard disc or floppy disc, but to get any benefit from the resulting module, you will need to have a boot sequence.
+
+To install <cite>MkResApps</cite> on a hard disc, copy the <file>MkResApps</file> BASIC file to a suitable place on your disc.  Ideally this should be your Library, so that it can be run from the command line; failing that, make sure that it is in your currently selected directory (CSD) whenever you need to use it.
+
+If you have a RiscPC or a version of the new Boot, copy the <file>ResFSApps</file> directory into your <file>Choices:Boot.Predesk</file> directory.  On an older machine, if you want to use the two filetypes you must ensure that the <file>!Run</file> file inside the directory gets run when the machine is turned on, and that any modules created by <cite>MkResApps</cite> are saved in here with the filename <file>ExtraApps</file>.
+
+<cite>MkResApps</cite> uses two filetypes from the User Area to allow it to link to directories and files (it can be made to use Obey files instead by adding a command line option, see below).  To change the filetypes used, load the <file>MkResApps</file> program into an editor and change the lines near the top that read
+
+<codeblock>
+dirlink_file%=&0DA
+filelink_file%=&0DB
+</codeblock>
+
+to the new filetypes.  Also change the lines in the <file>!Run</file> file that read
+
+<codeblock>
+Set Alias$@RunType_0DA Obey %%*0
+Set Alias$@RunType_0DB Obey %%*0
+
+Set File$Type_0DA DirLink
+Set File$Type_0DB FileLink
+</codeblock>
+
+and rename the sprites in <file>!Sprites</file> and <file>!Sprites22</file> appropriately.
+
+</chapter>
+
+
+
+
+
+<chapter title="Using MkResApps" file="Use">
+
+<cite>MkResApps</cite> is a command-line utility that uses a text file containing the files you want to include to create a relocatable module.  Instructions are given here for use under the various versions of RISC OS, and for using the program itself.
+
+
+<subhead title="Using the Module on RISC OS 3.5">
+
+Under RISC OS 3.5 it is possible to completely replace the applications stored in the <icon>Apps</icon> folder on the icon bar.  This was the original purpose for which I wrote <cite>MkResApps</cite>: Resources has now become a simple application launcher.
+
+To remove the existing applications from the Resources folder, you must edit the file <file>Choices:Boot.PreDesktop</file>.  Load it into a text editor and find the line that reads
+
+<codeblock>
+AddApp Boot:^.Apps.!*
+</codeblock>
+
+You must comment this out, by placing a vertical bar (<code>|</code>) at the start of the line.
+
+In order to replace the applications in ResourceFS, they must be included in the Apps folder on the <file>Resources:</file> path.  This is the default action that <cite>MkResApps</cite> takes: you do not need to specify the <command>-root</command> option when creating the module.
+
+To make your module load on start up, save it within the <file>Choices:Boot.PreDesk</file> folder. If you specify no <command>-module</command> (or <command>-outfile</command>) option, <cite>MkResApps</cite> does this for you.
+
+
+<subhead title="Using the Module on RISC OS 3.1">
+
+Under RISC OS 3.1, it is not possible (as far as I know) to remove the ROM Apps from the Apps folder on the icon bar.  Because of this, you can only add more applications.  These can either be in the root directory (as are <file>!Paint</file> and <file>!Draw</file> etc.) or they can be put into their own folder.  In this case, use the <command>-root</command> option, such as <command>-root Apps.NewApps</command>.  This would put the extra files within a folder called <file>NewApps</file>.  Note that the root path must start with <file>Apps</file> if you wish the extra applications to be available from the <icon>Apps</icon> folder on the icon bar.
+
+
+<subhead title="Using the Module on RISC OS 3.6 and RISC OS 3.7">
+
+I'm not sure if you can remove the existing applications from the <icon>Apps</icon> folder under these versions of the OS.  See the relevant section above for details on what to do, depending on whether or not this is possible.
+
+</chapter>
+
+
+
+
+
+<chapter title="Creating Source Files" file="Files">
+
+Source files have the following syntax, which bears more than a passing resemblance to C.
+
+The applications, directories and files to add are specified by their full pathname on your hard disc, and terminated by a semicolon (<code>;</code>):
+
+<codeblock>
+ADFS::Gromit.$.MainApps.DiscIndex.!Index;
+</codeblock>
+
+To specify the directory structure in the Apps Folder, directories are indicated by their name followed by curly braces (<code>{</code>, <code>}</code>):
+
+<codeblock>
+Directory
+{
+}
+</codeblock>
+
+Applications (or further directories) to appear within are listed inside the curly brackets:  This produces a structure something like this:
+
+<codeblock>
+ADFS::Gromit.$.MainApps.DiscIndex.!Index;
+ADFS::Gromit.$.MainApps.Others.Editors.!Family;
+ADFS::Gromit.$.MainApps.Others.Editors.!Innovate;
+ADFS::Gromit.$.MainApps.Others.Editors.!TelAddr;
+
+Accounting
+{
+  ADFS::Gromit.$.MainApps.Others.Editors.!Accounts+;
+}
+
+Database
+{
+  ADFS::Gromit.$.MainApps.Others.DataBase.!Designer;
+  ADFS::Gromit.$.MainApps.Others.DataBase.!Manager;
+}
+
+ADFS::Gromit.$.MainApps.Others.Misc.!Lottery;
+ADFS::Gromit.$.MainApps.Others.Misc.!MacroLife;
+ADFS::Gromit.$.MainApps.Others.Misc.!WorldTime;
+</codeblock>
+
+This would produce the following directory structure:
+
+<codeblock>
+Resources:Apps --- !Index
+                |- !Family
+                |- !Innovate
+                |- !TelAddr
+                |
+                |- Accounting --- !Accounts+
+                |
+                |- Database   --- !Designer
+                |              |- !Manager
+                |- !Lottery
+                |- !MacroLife
+                -- !WorldTime
+</codeblock>
+
+</chapter>
+
+
+
+
+
+<chapter title="Creating the Module" file="Create">
+
+Once you have saved the source file to disc, create the module using the <cite>MkResApps</cite> program.  Save <file>MkResApps</file> in your Library or put it in the CSD and then use the <command>MkResApps</command> command.
+
+<comdef target="MkResApps" params="-source &lt;sourcefile&gt; [-module &lt;modulefile&gt;]">
+
+The <command>MkResApps</command> creates a module to add dummy applications to ResourceFS.  It can be abbreviated to simply
+
+<codeblock>
+MkResApps &lt;sourcefile&gt; [&lt;modulefile&gt;]
+</codeblock>
+
+The following options are supported:
+
+<definition target="-source (or -in) &lt;source&gt;">
+Specifies the module source file.  This must be supplied.
+</definition>
+
+<definition target="-module (or -out) &lt;module&gt;">
+Specifies the module to be created.  If none is specified, the module is saved in the <file>Choices:Boot.PreDesk</file> directory on a RiscPC.  An error will occur if this option is missed out on RISC OS 3.1 (unless you have emulated the RISC OS 3.5+ !Boot structure).
+</definition>
+
+<definition target="-root &lt;rootdir&gt;">
+Specifies the root directory to use in the Resources: path.  If omitted, the default of <file>Resources:Apps</file> is used.  The option <command>-root NewDir.Folder</command> would put all the files in <file>Resources:NewDir.Folder</file>.
+</definition>
+
+<definition target="-nohelp">
+Do not include links to <file>!Help</file> files.
+</definition>
+
+<definition target="-obey">
+Use obey files instead of the custom types for links to directories and files.
+</definition>
+
+<definition target="-verbose">
+Print information about each object that is added to the module.
+</definition>
+
+If any objects don't exist, they will be reported along with a line number in the module source file.  Check that you have not mis-typed the pathnames, and that all preceding semicolons are present.
+
+Once the module has been constructed, it is saved and also copied directly into the RMA and started as a module.  This allows you to test your new module immediately: the files will (or at least should) appear in the Apps folder at once!
+
+</chapter>
+
+
+
+
+
+<chapter title="What MkResApps does" file="TechDetail">
+
+<cite>MkResApps</cite> creates a module which adds files to the ResourceFS.  To save space in memory, it only adds 'dummy' applications containing at most three files: <file>!Run</file>, <file>!Boot</file> and <file>!Help</file>.  These are all Obey files and simply provide links to the real files.
+
+<file>!Run</file> files must always be included.  These contain only one line, of the form
+
+<codeblock>
+/&lt;RealApp$Dir&gt;.!Run
+</codeblock>
+
+This will run the real <file>!Run</file> file when the dummy application is double-clicked.
+
+<file>!Boot</file> files are more tricky.  If the real application contained a <file>!Boot</file> file, the dummy <file>!Boot</file> contains a line of the form
+
+<codeblock>
+/&lt;RealApp$Dir&gt;.!Boot
+</codeblock>
+
+so that opening the directory with the dummy application inside will cause the real <file>!Boot</file> file to be run.  If the real application had no <file>!Boot</file>, but did have a file with the name <file>!Sprites</file> and type FF9 then the dummy <file>!Boot</file> contains
+
+<codeblock>
+IconSprites &lt;RealApp$Dir&gt;.!Sprites
+</codeblock>
+
+to cause the application's sprites to be loaded into the Wimp pool.  If all this fails, no <file>!Boot</file> file is included.
+
+The <file>!Help</file> file is only checked if the <command>-nohelp</command> option is not given.  In this case, any object in the real application called <file>!Help</file> will create an Obey file in the dummy application called <file>!Help</file> containing the line
+
+<codeblock>
+Filer_Run &lt;RealApp$Dir&gt;.!Help
+</codeblock>
+
+This causes the <file>!Help</file> object (whatever it may be) to be run when the dummy application's filer Help option is chosen.
+
+Directories and files are simply linked to by Obey files (possibly with a different filetype and icon) that <command>Filer_OpenDir</command> or <command>Filer_Run</command> the required object.
+
+</chapter>
+
+
+
+
+
+
+<chapter title="Version History" file="History">
+
+The following is a list of all the versions of <cite>MkResApps</cite>.
+
+
+<subhead title="0.03 (6 June 1997)">
+
+<list>
+<li>Initial release version.
+</list>
+
+
+<subhead title="0.04 (27 May 1998)">
+
+<list>
+<li>Bug fix to stop multiply nested directories in the resources: structure from confusing the program.
+</list>
+
+
+<subhead title="1.00 (23 July 1999)">
+
+<list>
+<li>Added support for links to files in the resource system.
+<li>Allows Obey files to be used instead of MkResApps' own file types.
+<li>Removed the Verbose option.
+</list>
+
+
+<subhead title="1.01 (24 July 1999)">
+
+<list>
+<li>Some internal tweaks to remove global variables.
+<li>Documentation overhaul.
+<li>Reimplemented the Verbose option correctly.
+</list>
+
+
+<subhead title="1.10 (6 December 2002)">
+
+Public Beta release.
+
+<list>
+<li>Generated module converted to new format and checked for 32-bit compatibility.
+</list>
+
+</chapter>
+
+
+
+
+
+
+<literal mode="Text">
+
+
+Updates and Contacting Me
+-------------------------
+
+  If you have any comments about MkResApps, or would like to report any bugs
+  that you find, you can email me at the address below.
+
+  Updates to MkResApps and more programmes for RISC OS computers can be
+  found on my website at http://www.stevefryatt.org.uk/software/
+
+  Stephen Fryatt
+  email: steve@stevefryatt.org.uk
+</literal>

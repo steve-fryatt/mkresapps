@@ -1,0 +1,20 @@
+| >!Run for ResFSApps
+| 1.00 (6 Jun 1999)
+|
+| (c) Stephen Fryatt, 1997
+
+IconSprites <Obey$Dir>.!Sprites
+
+| Change the XXX in  Alias$RunType_XXX and File$Type_XXX to the types you choose
+| for the file and directory links (also change these values in the MkResApps
+| program).
+|
+| See the ReadMe file in the distribution archive for details.
+
+Set Alias$@RunType_0DA Obey %%*0
+Set Alias$@RunType_0DB Obey %%*0
+
+Set File$Type_0DA DirLink
+Set File$Type_0DB FileLink
+
+RMEnsure ResFSApps 0.00 RMLoad <Obey$Dir>.ExtraApps

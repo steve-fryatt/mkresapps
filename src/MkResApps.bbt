@@ -1,0 +1,553 @@
+REM > MkResApps
+REM
+REM Create a Relocatable Module that will store files in the Apps Dir of a RiscPC.
+REM This is a bit of a hack... but it made the Acorn system a bit neater and more versatile.
+REM It allows nested directories (unlike AddApp) and one-off generation (to speed up !Boot).
+REM Load the resulting module in the Pre-Desk Boot sequence.  This does not work as well on a
+REM pre-Risc PC since the default ResFS apps can not be disabled or moved; you can still
+REM add more of your own, however.
+REM
+REM (c) Stephen Fryatt, 1997
+REM
+REM 6 December 2002
+REM 26/32-bit neutral
+:
+version$="1.10"
+:
+REM These are the filetypes that are used for directory and file links; change these if necessary
+REM and change the references in !Run, !Sprites and !Sprites22 inside the ResFSApps directory.
+REM
+REM See the ReadMe file in the distribution archive for more details.
+:
+dirlink_file%=&0DA
+filelink_file%=&0DB
+:
+REM Set file% to zero so that the error handler can close the input file if necessary.
+REM Set up the error handler.
+:
+file%=0
+:
+ON ERROR PRINT REPORT$+" at line "+STR$(ERL) : IF file%<>0 THEN CLOSE#file% : END ELSE END
+:
+REM Get the command line arguments and decode them into various filenames and flags.
+:
+SYS "OS_GetEnv" TO environment$
+environment$=MID$(environment$,INSTR(environment$,"""",INSTR(environment$,"""")+1)+1)
+:
+output_buffer_size%=4095
+DIM output_buffer% output_buffer_size%
+:
+keyword_defs$="source=in/A/G,module=out/G,root/G,nohelp/S,obey/S,verbose/S"+CHR$(0)
+SYS "OS_ReadArgs",keyword_defs$,environment$,output_buffer%,output_buffer_size%
+:
+include_help%=(output_buffer%!12=0)
+use_obey_files%=(output_buffer%!16<>0)
+be_verbose%=(output_buffer%!20<>0)
+:
+REM Read the application details in from this text file.
+:
+IF !output_buffer%=0 THEN ERROR 255,"No source file was specified"
+source_data_file$=FNgstransd_string(!output_buffer%)
+:
+REM Save the competed module here.  By default use the PreDesk directory on a RiscPC.
+:
+IF output_buffer%!4=0 THEN
+ save_as$="<Choices$Write>.Boot.Predesk.ResFSApps.ExtraApps"
+ELSE
+ save_as$=FNgstransd_string(output_buffer%!4)
+ENDIF
+:
+REM This is the directory in ResFS to put the files in.
+REM
+REM NB: To comply with the spec. in the RISC OS 3 PRMs, this must start with the directory
+REM Apps; if it doesn't then the Apps icon on the icon-bar will not have any effect.
+:
+IF output_buffer%!8=0 THEN
+ resource_root$="Apps"
+ELSE
+ resource_root$=FNgstransd_string(output_buffer%!8)
+ENDIF
+:
+REM Find out when the module was compiled so that we can datestamp the files correctly.
+:
+DIM creation_time% 5
+!creation_time%=3
+SYS "OS_Word",14,creation_time%
+:
+REM Convert the date into a string of the form (DD Mmm YYYY) for the benefit of the module
+REM help text.  Always use UK Territory (ie territory 1).  Users in other territories should
+REM make their own arrangements.
+:
+DIM date_string% 100
+SYS "Territory_ConvertDateAndTime",1,creation_time%,date_string%,100,"(%dy %m3 %ce%yr)" TO ,z%
+?z%=13
+:
+REM Allocate some space to convert file sizes into strings.
+:
+file_size_buffer_size%=20
+DIM file_size_buffer% file_size_buffer_size%
+:
+REM Assemble the module header code.  We allocate 600K for the module (&96000): if you need
+REM more then increase the value of code_space%.  Do you really want a 600K+ module loaded
+REM in your Boot sequence?  If you do you must have too much RAM... ;-)
+:
+code_space%=&96000
+:
+DIM code% code_space%
+:
+FOR pass%=12 TO 14 STEP 2
+ L%=code%+code_space%
+ O%=code%
+ P%=0
+ [ OPT pass%
+          EQUD      0                             ; The Start Code offset
+          EQUD      initialisation                ; The Initialisation Code offset
+          EQUD      finalisation                  ; The finalisation Code offset
+          EQUD      service_calls                 ; The Service Call Handler offset
+          EQUD      title                         ; Offset to the module title
+          EQUD      help                          ; Offset to the help text
+          EQUD      0                             ; Offset to command table
+          EQUD      0                             ; SWI chunk number
+          EQUD      0                             ; The SWI Handling Code offset
+          EQUD      0                             ; Offset to SWI Decoding table
+          EQUD      0                             ; The SWI Decoding Code offset
+          EQUD      0                             ; MessageTrans file offset
+          EQUD      module_flags
+
+ .module_flags
+          EQUD      1                             ; 32-bit compatible
+
+ ; The Initialisation code - all we have to do is register our files with the ResFS and then
+ ; wait quietly.
+
+ .initialisation
+          STMFD     R13!,{R14}
+          ADR       R0,file_data                  ; Point R0 to the file data
+          SWI       "XResourceFS_RegisterFiles"   ; Register the files
+          LDMFD     R13!,{PC}
+
+ ; The Finalisation code, called when the module is killed temporarily or fatally.  It's still
+ ; simple - all we must do is de-register our file block from ResFS as it will probably move.
+
+ .finalisation
+          STMFD     R13!,{R14}
+          ADR       R0,file_data                  ; Point R0 to the file data
+          SWI       "XResourceFS_DeregisterFiles" ; De-register the files
+          LDMFD     R13!,{PC}
+
+ ; The Service Call handler.  We only care about Service_ResourceFSStarting (&60), when we must
+ ; register our file block with the ResFS.  Due to a bodge by Acorn we must use the hack which
+ ; is here to get around the fact that the module's SWIs don't yet work...
+
+ .service_calls
+          TEQ       R1,#&60                       ; We only want ServiceCall &60...
+          MOVNE     PC,R14                        ; ...so quit if it isn't.
+          STMFD     R13!,{R0-R3,R14}
+          ADR       R0,file_data                  ; Point R0 to the file data
+          MOV       R14,PC                        ; Set the return address to here (ish)...
+          MOV       PC,R2                         ; ...and jump to a routine inside ResFS
+          LDMFD     R13!,{R0-R3,PC}
+
+ ; This is the title of the module.
+
+ .title
+          EQUS      "ResFSApps"
+          EQUB      0
+          ALIGN
+
+ ; Here is the module's help text.
+
+ .help
+          EQUS      "ResourceFS Apps"
+          EQUB      9
+          EQUS      version$
+          EQUB      32
+          EQUS      $date_string%
+          EQUB      32
+          EQUS      "© Stephen Fryatt, 1997"
+          EQUB      0
+          ALIGN
+
+ ; The actual file data will be appended here by the BASIC code which follows.
+
+ .file_data
+ ]
+NEXT pass%
+:
+REM Set up the remaining filetypes that we will be using.
+:
+obey_file%=&FEB
+:
+REM Tag the file data onto the end of the module, object by object.  Set the pointer
+REM to the space for the next pointer, and initialise the directory structure in ResFS.
+:
+next_app%=O%
+dir_structure$=""
+:
+REM Open the file containing the structure definition of the proposed ResFS.
+:
+PRINT "  Opening source: ";source_data_file$
+PRINT
+:
+file%=OPENIN(source_data_file$)
+line%=1
+errors%=0
+:
+REM Build the directory structure file by file in the memory after the module code.  The loop
+REM reads in the text file character by character, and parses it.
+:
+WHILE NOT EOF#file%
+ :
+ REM Reset the variable to hold the next line.
+ :
+ line$=""
+ :
+ REM Read in the next line, terminating without storing on the characters ";", "{" or "}".
+ :
+ REPEAT
+  char$=CHR$(BGET#file%)
+  IF char$<>";" AND char$<>"{" AND char$<>"}" AND char$>" " THEN line$+=char$
+  IF ASC(char$)=10 THEN line%+=1
+ UNTIL char$=";" OR char$="{" OR char$="}" OR EOF#file%
+ :
+ REM Depending upon the terminating character, either deepen the directory structure, drop
+ REM back up or store an object.
+ :
+ IF char$=";" THEN
+  resource_dir$=resource_root$
+  IF dir_structure$<>"" THEN resource_dir$+="."+dir_structure$
+  IF FNadd_object(next_app%,line$,resource_dir$,include_help%,be_verbose%) THEN errors%+=1
+ ENDIF
+ IF char$="{" THEN
+  IF dir_structure$="" THEN dir_structure$=line$ ELSE dir_structure$+="."+line$
+ ENDIF
+ IF char$="}" THEN dir_structure$=FNpath_name(dir_structure$)
+ENDWHILE
+:
+REM Close the structure definition file, and set file% to zero so as not to trip up the error
+REM handler.
+:
+CLOSE#file%
+file%=0
+:
+REM Terminate the ResFS file structure by entering a zero length for the next (non existent)
+REM file.
+:
+!next_app%=0
+:
+REM Finally, save the assembled module, RMRun it from memory and exit.
+:
+PRINT'"Module assembled";
+IF errors% THEN PRINT " with ";errors%;" errors" ELSE PRINT
+PRINT "     Module size: ";(next_app%+4-code%+512) DIV 1024;" Kbytes"
+PRINT "    Module saved: ";save_as$
+:
+SYS "OS_File",10,save_as$,&FFA,,code%,next_app%+4
+:
+PRINT " Module inserted"
+:
+SYS "OS_Module",11,code%,next_app%+4-code%
+END
+:
+:
+:
+:
+DEF FNadd_object(RETURN next_file%,object_name$,resource_dir$,help%,verbose%)
+:
+REM Adds an object taken from the file_name to the resource filing system, in the folder
+REM resource_dir$; includes help files if help% is TRUE; displays progress if verbose% is TRUE.
+:
+LOCAL memory_start%,object_type%,file_type%,leaf_name$,r2%,r3%,r4%,r5%,error%
+:
+error%=FALSE
+:
+REM Find the leafname of the object that we wre adding to the ResourceFS.
+:
+leaf_name$=FNleaf_name(object_name$)
+:
+REM Get the object type; if it is zero there was no object so we report the error. Otherwise
+REM we find the actual type of the file so that we can differentiate between Dirs and Apps.
+:
+SYS "OS_File",17,object_name$ TO object_type%,,r2%,r3%,r4%,r5%
+:
+IF object_type%=0 THEN
+ PRINT "Error  '";object_name$;"' not found at line ";line%
+ error%=TRUE
+ELSE
+ SYS "OS_FSControl",38,object_name$,r2%,r3%,r4%,r5%,object_type% TO ,,file_type%
+ :
+ IF verbose% THEN
+  PRINT "Adding ";FNcolumn(FNtextual_type(object_type%,file_type%),11);" ";
+  PRINT FNcolumn(object_name$,61)
+ ENDIF
+ :
+ REM Depending on the filetype of the object to add, call the required routine.
+ :
+ memory_start%=next_file%
+ :
+ CASE object_type% OF
+  WHEN 2
+   CASE file_type% OF
+    WHEN &1000 : PROCadd_directory(next_file%,object_name$,resource_dir$)
+    WHEN &2000 : PROCadd_application(next_file%,object_name$,resource_dir$,help%)
+   ENDCASE
+  OTHERWISE : PROCadd_file(next_file%,object_name$,resource_dir$)
+ ENDCASE
+ENDIF
+:
+=error%
+:
+:
+:
+:
+DEF PROCadd_file(RETURN next_file%,file_path$,resource_dir$)
+:
+REM Add the file to the ResourceFS.  This isn't possible directly, so instead we provide
+REM a AppLink or Obey file which executes a Filer_Run to do the necessary.
+:
+LOCAL file_name$,file_type%
+:
+REM Do the initial setting up.  resource_path$ contains the directory into which the Obey file
+REM will be saved.
+:
+file_name$=FNleaf_name(file_path$)
+resource_dir$+="."
+:
+REM Create an Obey file containing a Run to run the required file.
+:
+IF use_obey_files% THEN file_type%=obey_file% ELSE file_type%=filelink_file%
+:
+PROCadd_raw_file(next_file%,resource_dir$+file_name$,file_type%,"Filer_Run "+file_path$)
+ENDPROC
+:
+:
+:
+:
+DEF PROCadd_directory(RETURN next_file%,dir_path$,resource_dir$)
+:
+REM Add the directory to the ResourceFS.  This isn't possible directly, so instead we provide
+REM a DirLink or Obey file which executes a Filer_OpenDir to do the necessary.  This is effectively
+REM an oddly typed Obey file with a directory-style icon... Ugh!
+:
+LOCAL resource_path$,dir_name$,file_type%
+:
+REM Do the initial setting up.  resource_path$ contains the directory into which the Obey file
+REM will be saved.
+:
+dir_name$=FNleaf_name(dir_path$)
+resource_dir$+="."
+:
+REM Create an Obey file containing a Filer_OpenDir to open the required directory.
+:
+IF use_obey_files% THEN file_type%=obey_file% ELSE file_type%=dirlink_file%
+:
+PROCadd_raw_file(next_file%,resource_dir$+dir_name$,file_type%,"Filer_OpenDir "+dir_path$)
+ENDPROC
+:
+:
+:
+:
+DEF PROCadd_application(RETURN next_file%,app_path$,resource_dir$,help%)
+:
+REM Add an application to the module.  The variable next_file should point to the place to store
+REM the next file's data: this is updated and returned when the procedure exits.  app_path$
+REM contains the full name of the application in the directory where it is stored.
+REM resource_dir$ indicates the directory where the application should be put in the ResFS:
+REM this does NOT include the leafname of the application.
+:
+LOCAL resource_app$,app_name$,object_type%,r2%,r3%,r4%,r5%
+:
+REM Do the initial setting up: resource_app$ is the full name of the directory in the ResFS
+REM including leafname of the application and a trailing ".".
+:
+app_name$=FNleaf_name(app_path$)
+resource_app$=resource_dir$+"."+app_name$+"."
+:
+REM Add the !Run file.  This is NOT conditional.
+:
+PROCadd_raw_file(next_file%,resource_app$+"!Run",obey_file%,"/"+app_path$+".!Run")
+:
+REM If the application had a !Boot file, add a !Boot file to run this, otherwise if there is
+REM a !Sprites file make !Boot IconSprites this, otherwise include no !Boot file.
+:
+SYS "OS_File",17,app_path$+".!Boot" TO object_type%
+IF object_type%<>0 THEN
+ PROCadd_raw_file(next_file%,resource_app$+"!Boot",obey_file%,"/"+app_path$+".!Boot")
+ELSE
+ SYS "OS_File",17,app_path$+".!Sprites" TO object_type%,,r2%,r3%,r4%,r5%
+ SYS "OS_FSControl",38,app_path$+".!Sprites",r2%,r3%,r4%,r5%,object_type% TO ,,file_type%
+ IF object_type%<>0 AND file_type%=&FF9 THEN
+  PROCadd_raw_file(next_file%,resource_app$+"!Boot",obey_file%,"IconSprites "+app_path$+".!Sprites")
+ ENDIF
+ENDIF
+:
+REM If the application had a !Help file include a !Help file to Filer_Run this.
+:
+IF help% THEN
+ SYS "OS_File",17,app_path$+".!Help" TO object_type%
+ IF object_type%<>0 THEN
+  PROCadd_raw_file(next_file%,resource_app$+"!Help",obey_file%,"Filer_Run "+app_path$+".!Help")
+ ENDIF
+ENDIF
+ENDPROC
+:
+:
+:
+:
+DEF PROCadd_raw_file(RETURN file_addr%,file_name$,file_type%,file_contents$)
+:
+REM Add the data for a file to the end of the module.
+:
+LOCAL ptr%,load_addr%,exec_addr%
+:
+REM Set up the load and exec addresses for the file info word.  Take a copy of the file
+REM data pointer so that we can find the start of the block again later.
+:
+load_addr%=&FFF00000 OR (file_type%<<8) OR (creation_time%?4)
+exec_addr%=!creation_time%
+ptr%=file_addr%
+:
+REM Store the file block header, including the initial zero to leave room to store the block
+REM length when we know what it is.
+:
+PROCstore_word(ptr%,0)                      : REM Block length (updated later)
+PROCstore_word(ptr%,load_addr%)             : REM Load address
+PROCstore_word(ptr%,exec_addr%)             : REM Exec address
+PROCstore_word(ptr%,LEN(file_contents$))    : REM Size of file
+PROCstore_word(ptr%,%00111011)              : REM File attributes
+:
+REM Store the actual file path and data itself.
+:
+PROCstore_string(ptr%,file_name$)           : REM The full name of the file (including path)
+PROCstore_word(ptr%,LEN(file_contents$)+4)  : REM The size of the file plus one word
+PROCstore_string(ptr%,file_contents$)       : REM The contents of the file
+:
+REM Store the length of the file block at the head of the block and then update the next file
+REM pointer to return to the caller.
+:
+!file_addr%=ptr%-file_addr%
+file_addr%=ptr%
+ENDPROC
+:
+:
+:
+:
+DEF PROCstore_word(RETURN addr%, word%)
+:
+REM Store a single word at the given address and update the address accordingly.  Assumes that
+REM the assembler limit L% is still set correctly.
+:
+IF addr%+4>L% THEN ERROR 2,"Assembler limit reached"
+:
+!addr%=word%
+addr%+=4
+ENDPROC
+:
+:
+:
+:
+DEF PROCstore_string(RETURN addr%, string$)
+:
+REM Store the string at the given address and pad it out with zero bytes to make it an exact
+REM number of words long.  Update the address appropriately.  Assumes that the assembler
+REM limit L% is still set correctly.
+:
+LOCAL len%
+:
+len%=((LEN(string$)+4) DIV 4) * 4
+IF addr%+len%>L% THEN ERROR 2,"Assembler limit reached"
+$addr%=LEFT$(string$+STRING$(4,CHR$(0)),len%)
+addr%+=len%
+ENDPROC
+:
+:
+:
+:
+DEF FNleaf_name(file_name$)
+:
+REM Return the leafname from a given filename.
+:
+WHILE INSTR(file_name$,".")
+ file_name$=MID$(file_name$,INSTR(file_name$,".")+1)
+ENDWHILE
+=file_name$
+:
+:
+:
+:
+DEF FNpath_name(file_name$)
+:
+REM Return the pathname from a given filename.
+:
+LOCAL path_name$
+:
+WHILE INSTR(file_name$,".")
+ path_name$+=LEFT$(file_name$,INSTR(file_name$,".")-1)+"."
+ file_name$=MID$(file_name$,INSTR(file_name$,".")+1)
+ENDWHILE
+=LEFT$(path_name$)
+:
+:
+:
+:
+DEF FNzero_string(string%)
+:
+REM Return as a BASIC string a zero terminated string.
+:
+LOCAL string$
+:
+WHILE ?string%<>0
+ string$+=CHR$(?string%)
+ string%+=1
+ENDWHILE
+=string$
+:
+:
+:
+:
+DEF FNgstransd_string(string%)
+:
+REM Return as a BASIC string a GSTrans formatted string (two byte length followed by
+REM unterminated string).  Why don't Acorn mention this in the PRMs under OS_ReadArgs?
+:
+LOCAL string$,length%,ptr%
+:
+length%=((?string%)+((string%?1)<<8))-1
+string%+=2
+:
+FOR ptr%=0 TO length%
+ string$+=CHR$(string%?ptr%)
+NEXT ptr%
+=string$
+:
+:
+:
+:
+DEF FNtextual_type(object%,file%)
+:
+REM Return a string (File, Application, etc) from a filetype and objectype.
+:
+LOCAL name$
+:
+CASE object% OF
+ WHEN 1 : name$="File"
+ WHEN 2
+  CASE file% OF
+   WHEN &1000 : name$="Directory"
+   WHEN &2000 : name$="Application"
+  ENDCASE
+ WHEN 3 : name$="Image"
+ENDCASE
+:
+=name$
+:
+:
+:
+:
+DEF FNcolumn(text$,width%)
+:
+REM Return text$ in a column width% wide, padded by spaces.
+:
+IF LEN(text$)>width% THEN text$="Œ"+RIGHT$(text$,width%-1)
+:
+=text$+STRING$(width%-LEN(text$)," ")
