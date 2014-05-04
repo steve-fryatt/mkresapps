@@ -93,6 +93,7 @@ RUNIMAGE := MkResApps,ffb
 README := ReadMe,fff
 SHHELP := AwkScan,3d6
 LICENSE := Licence,fff
+RUNDIR := ResFSApps
 
 
 # Set up the source files.
@@ -130,7 +131,7 @@ $(OUTDIR)/$(README): $(MANUAL)/$(MANSRC)
 
 release: clean all
 	$(RM) ../$(ZIPFILE)
-	(cd $(OUTDIR) ; $(ZIP) $(ZIPFLAGS) ../../$(ZIPFILE) $(RUNIMAGE) $(README) $(LICENSE))
+	(cd $(OUTDIR) ; $(ZIP) $(ZIPFLAGS) ../../$(ZIPFILE) $(RUNIMAGE) $(README) $(LICENSE) $(RUNDIR))
 	$(RM) ../$(SRCZIPFILE)
 	$(ZIP) $(SRCZIPFLAGS) ../$(SRCZIPFILE) $(OUTDIR) $(SRCDIR) $(MANUAL) Makefile
 
