@@ -91,7 +91,6 @@ OUTDIR := build
 
 RUNIMAGE := MkResApps,ffb
 README := ReadMe,fff
-SHHELP := AwkScan,3d6
 LICENSE := Licence,fff
 RUNDIR := ResFSApps
 
