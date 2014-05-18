@@ -31,6 +31,7 @@
 # The build date.
 
 BUILD_DATE := $(shell date "+%d %b %Y")
+BUILD_YEAR := $(shell date "+%Y")
 HELP_DATE := $(shell date "+%-d %B %Y")
 
 # Construct version or revision information.
@@ -116,7 +117,7 @@ application: $(OUTDIR)/$(RUNIMAGE)
 SRCS := $(addprefix $(SRCDIR)/, $(SRCS))
 
 $(OUTDIR)/$(RUNIMAGE): $(SRCS)
-	$(TOKENIZE) $(TOKFLAGS) $(firstword $(SRCS)) -link -out $(OUTDIR)/$(RUNIMAGE) -path $(LIBPATHS) -define 'build_date$$=$(BUILD_DATE)' -define 'build_version$$=$(VERSION)'
+	$(TOKENIZE) $(TOKFLAGS) $(firstword $(SRCS)) -link -out $(OUTDIR)/$(RUNIMAGE) -path $(LIBPATHS) -define 'year$$=$(BUILD_YEAR)' -define 'version$$=$(VERSION)'
 
 
 # Build the documentation

@@ -1,18 +1,38 @@
-REM > MkResApps
+REM >MkResApps
 REM
+REM Copyright 1997-2014, Stephen Fryatt (info@stevefryatt.org.uk)
+REM
+REM This file is part of MkResApps:
+REM
+REM   http://www.stevefryatt.org.uk/software/
+REM
+REM Licensed under the EUPL, Version 1.1 only (the "Licence");
+REM You may not use this work except in compliance with the
+REM Licence.
+REM
+REM You may obtain a copy of the Licence at:
+REM
+REM   http://joinup.ec.europa.eu/software/page/eupl
+REM
+REM Unless required by applicable law or agreed to in
+REM writing, software distributed under the Licence is
+REM distributed on an "AS IS" basis, WITHOUT WARRANTIES
+REM OR CONDITIONS OF ANY KIND, either express or implied.
+REM
+REM See the Licence for the specific language governing
+REM permissions and limitations under the Licence.
+:
 REM Create a Relocatable Module that will store files in the Apps Dir of a RiscPC.
 REM This is a bit of a hack... but it made the Acorn system a bit neater and more versatile.
 REM It allows nested directories (unlike AddApp) and one-off generation (to speed up !Boot).
 REM Load the resulting module in the Pre-Desk Boot sequence.  This does not work as well on a
 REM pre-Risc PC since the default ResFS apps can not be disabled or moved; you can still
 REM add more of your own, however.
-REM
-REM (c) Stephen Fryatt, 1997
-REM
-REM 6 December 2002
-REM 26/32-bit neutral
+:
+REM These variables will be replaced by Tokenize during build (version$ & year$).
 :
 version$="1.10"
+year$="2014"
 :
 REM These are the filetypes that are used for directory and file links; change these if necessary
 REM and change the references in !Run, !Sprites and !Sprites22 inside the ResFSApps directory.
@@ -164,7 +184,7 @@ FOR pass%=12 TO 14 STEP 2
           EQUB      32
           EQUS      $date_string%
           EQUB      32
-          EQUS      "© Stephen Fryatt, 1997"
+          EQUS      "© Stephen Fryatt, 1997-"+year$
           EQUB      0
           ALIGN
 
