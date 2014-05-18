@@ -322,6 +322,15 @@ Public Beta release.
 <li>Generated module converted to new format and checked for 32-bit compatibility.
 </list>
 
+
+<subhead title="Test Build">
+
+Development release for testing and feedback.
+
+<list>
+<li>Converted source to generic build system usning Tokenize.
+</list>
+
 </chapter>
 
 
