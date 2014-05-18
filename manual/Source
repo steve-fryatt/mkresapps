@@ -101,14 +101,14 @@ AddApp Boot:^.Apps.!*
 
 You must comment this out, by placing a vertical bar (<code>|</code>) at the start of the line.
 
-In order to replace the applications in ResourceFS, they must be included in the Apps folder on the <file>Resources:</file> path. This is the default action that <cite>MkResApps</cite> takes: you do not need to specify the <command>-root</command> option when creating the module.
+In order to replace the applications in ResourceFS, they must be included in the Apps folder on the <file>Resources:</file> path. This is the default action that <cite>MkResApps</cite> takes: you do not need to specify the <param>-root</param> option when creating the module.
 
-To make your module load on start up, save it within the <file>Choices:Boot.PreDesk</file> folder. If you specify no <command>-module</command> (or <command>-outfile</command>) option, <cite>MkResApps</cite> does this for you.
+To make your module load on start up, save it within the <file>Choices:Boot.PreDesk</file> folder. If you specify no <param>-module</param> (or <param>-outfile</param>) option, <cite>MkResApps</cite> does this for you.
 
 
 <subhead title="Using the Module on RISC OS 3.1">
 
-Under RISC&nbsp;OS&nbsp;3.1, it is not possible (as far as I know) to remove the ROM Apps from the Apps folder on the icon bar. Because of this, you can only add more applications. These can either be in the root directory (as are <file>!Paint</file> and <file>!Draw</file> etc.) or they can be put into their own folder. In this case, use the <command>-root</command> option, such as <command>-root Apps.NewApps</command>. This would put the extra files within a folder called <file>NewApps</file>. Note that the root path must start with <file>Apps</file> if you wish the extra applications to be available from the <icon>Apps</icon> folder on the icon bar.
+Under RISC&nbsp;OS&nbsp;3.1, it is not possible (as far as I know) to remove the ROM Apps from the Apps folder on the icon bar. Because of this, you can only add more applications. These can either be in the root directory (as are <file>!Paint</file> and <file>!Draw</file> etc.) or they can be put into their own folder. In this case, use the <param>-root</param> option, such as <command>-root&nbsp;Apps.NewApps</command>. This would put the extra files within a folder called <file>NewApps</file>. Note that the root path must start with <file>Apps</file> if you wish the extra applications to be available from the <icon>Apps</icon> folder on the icon bar.
 
 
 <subhead title="Using the Module on RISC OS 3.6 and RISC OS 3.7">
@@ -209,7 +209,7 @@ Specifies the module to be created. If none is specified, the module is saved in
 </definition>
 
 <definition target="-root &lt;rootdir&gt;">
-Specifies the root directory to use in the Resources: path. If omitted, the default of <file>Resources:Apps</file> is used. The option <command>-root NewDir.Folder</command> would put all the files in <file>Resources:NewDir.Folder</file>.
+Specifies the root directory to use in the Resources: path. If omitted, the default of <file>Resources:Apps</file> is used. The option <command>-root&nbsp;NewDir.Folder</command> would put all the files in <file>Resources:NewDir.Folder</file>.
 </definition>
 
 <definition target="-nohelp">
@@ -260,7 +260,7 @@ IconSprites &lt;RealApp$Dir&gt;.!Sprites
 
 to cause the application&rsquo;s sprites to be loaded into the Wimp pool. If all this fails, no <file>!Boot</file> file is included.
 
-The <file>!Help</file> file is only checked if the <command>-nohelp</command> option is not given. In this case, any object in the real application called <file>!Help</file> will create an Obey file in the dummy application called <file>!Help</file> containing the line
+The <file>!Help</file> file is only checked if the <param>-nohelp</param> option is not given. In this case, any object in the real application called <file>!Help</file> will create an Obey file in the dummy application called <file>!Help</file> containing the line
 
 <codeblock>
 Filer_Run &lt;RealApp$Dir&gt;.!Help
