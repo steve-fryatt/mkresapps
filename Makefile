@@ -1,10 +1,10 @@
-# Copyright 2014, Stephen Fryatt (info@stevefryatt.org.uk)
+# Copyright 2014-2020, Stephen Fryatt (info@stevefryatt.org.uk)
 #
 # This file is part of ResFSApps:
 #
 #   http://www.stevefryatt.org.uk/software/
 #
-# Licensed under the EUPL, Version 1.1 only (the "Licence");
+# Licensed under the EUPL, Version 1.2 only (the "Licence");
 # You may not use this work except in compliance with the
 # Licence.
 #
@@ -92,13 +92,14 @@ OUTDIR := build
 
 RUNIMAGE := MkResApps,ffb
 README := ReadMe,fff
-LICENSE := Licence,fff
+LICENCE := Licence,fff
 RUNDIR := ResFSApps
 
 
 # Set up the source files.
 
 MANSRC := Source
+LICSRC ?= Licence
 
 SRCS := MkResApps.bbt
 
@@ -106,32 +107,38 @@ SRCS := MkResApps.bbt
 
 all: application documentation
 
+# Create the output folder if it doesn't exist.
+
+$(OUTDIR):
+	$(MKDIR) $(OUTDIR)
 
 # Build the application and its supporting binary files.
 
 application: $(OUTDIR)/$(RUNIMAGE)
 
-
 # Build the complete !RunImage from the object files.
 
 SRCS := $(addprefix $(SRCDIR)/, $(SRCS))
 
-$(OUTDIR)/$(RUNIMAGE): $(SRCS)
+$(OUTDIR)/$(RUNIMAGE): $(SRCS) $(OUTDIR)
 	$(TOKENIZE) $(TOKFLAGS) $(firstword $(SRCS)) -link -out $(OUTDIR)/$(RUNIMAGE) -path $(LIBPATHS) -define 'year$$=$(BUILD_YEAR)' -define 'version$$=$(VERSION)'
 
 
 # Build the documentation
 
-documentation: $(OUTDIR)/$(README)
+documentation: $(OUTDIR)/$(README) $(OUTDIR)/$(LICENCE)
 
-$(OUTDIR)/$(README): $(MANUAL)/$(MANSRC)
+$(OUTDIR)/$(README): $(MANUAL)/$(MANSRC) $(OUTDIR)
 	$(MANTOOLS) -MTEXT -I$(MANUAL)/$(MANSRC) -O$(OUTDIR)/$(README) -D'version=$(HELP_VERSION)' -D'date=$(HELP_DATE)'
+
+$(OUTDIR)/$(LICENCE): $(LICSRC) $(OUTDIR)
+	$(CP) $(LICSRC) $(OUTDIR)/$(LICENCE)
 
 # Build the release Zip file.
 
 release: clean all
 	$(RM) ../$(ZIPFILE)
-	(cd $(OUTDIR) ; $(ZIP) $(ZIPFLAGS) ../../$(ZIPFILE) $(RUNIMAGE) $(README) $(LICENSE) $(RUNDIR))
+	(cd $(OUTDIR) ; $(ZIP) $(ZIPFLAGS) ../../$(ZIPFILE) $(RUNIMAGE) $(README) $(LICENCE) $(RUNDIR))
 	$(RM) ../$(SRCZIPFILE)
 	$(ZIP) $(SRCZIPFLAGS) ../$(SRCZIPFILE) $(OUTDIR) $(SRCDIR) $(MANUAL) Makefile
 
@@ -147,5 +154,6 @@ backup:
 
 clean:
 	$(RM) $(OUTDIR)/$(RUNIMAGE)
+	$(RM) $(OUTDIR)/$(LICENCE)
 	$(RM) $(OUTDIR)/$(README)
 

@@ -6,7 +6,7 @@ REM This file is part of MkResApps:
 REM
 REM   http://www.stevefryatt.org.uk/software/
 REM
-REM Licensed under the EUPL, Version 1.1 only (the "Licence");
+REM Licensed under the EUPL, Version 1.2 only (the "Licence");
 REM You may not use this work except in compliance with the
 REM Licence.
 REM
@@ -184,7 +184,7 @@ FOR pass%=12 TO 14 STEP 2
           EQUB      32
           EQUS      $date_string%
           EQUB      32
-          EQUS      "© Stephen Fryatt, 1997-"+year$
+          EQUS      "ï¿½ Stephen Fryatt, 1997-"+year$
           EQUB      0
           ALIGN
 
@@ -568,6 +568,6 @@ DEF FNcolumn(text$,width%)
 :
 REM Return text$ in a column width% wide, padded by spaces.
 :
-IF LEN(text$)>width% THEN text$="Œ"+RIGHT$(text$,width%-1)
+IF LEN(text$)>width% THEN text$="ï¿½"+RIGHT$(text$,width%-1)
 :
 =text$+STRING$(width%-LEN(text$)," ")
