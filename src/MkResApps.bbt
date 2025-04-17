@@ -29,10 +29,10 @@ REM Load the resulting module in the Pre-Desk Boot sequence.  This does not work
 REM pre-Risc PC since the default ResFS apps can not be disabled or moved; you can still
 REM add more of your own, however.
 :
-REM These variables will be replaced by Tokenize during build (version$ & year$).
+REM These variables will be replaced by Tokenize during build (build_version$ & build_date$).
 :
-version$="1.10"
-year$="2014"
+build_version$="1.10"
+build_date$="2014"
 :
 REM These are the filetypes that are used for directory and file links; change these if necessary
 REM and change the references in !Run, !Sprites and !Sprites22 inside the ResFSApps directory.
@@ -180,11 +180,11 @@ FOR pass%=12 TO 14 STEP 2
  .help
           EQUS      "ResourceFS Apps"
           EQUB      9
-          EQUS      version$
+          EQUS      build_version$
           EQUB      32
           EQUS      $date_string%
           EQUB      32
-          EQUS      "ï¿½ Stephen Fryatt, 1997-"+year$
+          EQUS      "© Stephen Fryatt, 1997-"+RIGHT$(build_date$, 4)
           EQUB      0
           ALIGN
 
